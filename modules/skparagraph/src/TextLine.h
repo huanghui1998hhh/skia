@@ -110,12 +110,10 @@ public:
     void createEllipsis(SkScalar maxWidth,
                         const SkString& ellipsis,
                         bool ltr,
-                        EllipsisPosition ellipsisPosition,
-                        SkScalar middleEllipsisRatio);
+                        EllipsisPosition ellipsisPosition);
 
 private:
     void createHeadEllipsis(SkScalar maxWidth, const SkString& ellipsis);
-    void createMiddleEllipsis(SkScalar maxWidth, const SkString& ellipsis, SkScalar middleEllipsisRatio);
     void createTailEllipsis(SkScalar maxWidth, const SkString& ellipsis);
 
 public:

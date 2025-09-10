@@ -83,7 +83,6 @@ struct ParagraphStyle {
                this->fEllipsis == rhs.fEllipsis &&
                this->fEllipsisUtf16 == rhs.fEllipsisUtf16 &&
                this->fEllipsisPosition == rhs.fEllipsisPosition &&
-               this->fMiddleEllipsisRatio == rhs.fMiddleEllipsisRatio &&
                this->fTextDirection == rhs.fTextDirection && this->fTextAlign == rhs.fTextAlign &&
                this->fDefaultTextStyle == rhs.fDefaultTextStyle &&
                this->fReplaceTabCharacters == rhs.fReplaceTabCharacters &&
@@ -113,11 +112,6 @@ struct ParagraphStyle {
 
     EllipsisPosition getEllipsisPosition() const { return fEllipsisPosition; }
     void setEllipsisPosition(EllipsisPosition value) { fEllipsisPosition = value; }
-    
-    SkScalar getMiddleEllipsisRatio() const { return fMiddleEllipsisRatio; }
-    void setMiddleEllipsisRatio(SkScalar ratio) { 
-        fMiddleEllipsisRatio = std::max(0.0f, std::min(1.0f, ratio)); 
-    }
 
     SkScalar getHeight() const { return fHeight; }
     void setHeight(SkScalar height) { fHeight = height; }
@@ -151,7 +145,6 @@ private:
     std::u16string fEllipsisUtf16;
     SkString fEllipsis;
     EllipsisPosition fEllipsisPosition;
-    SkScalar fMiddleEllipsisRatio;
     SkScalar fHeight;
     TextHeightBehavior fTextHeightBehavior;
     bool fHintingIsOn;

@@ -24,7 +24,6 @@ ParagraphStyle::ParagraphStyle() {
     fTextDirection = TextDirection::kLtr;
     fLinesLimit = std::numeric_limits<size_t>::max();
     fEllipsisPosition = EllipsisPosition::kTail;
-    fMiddleEllipsisRatio = 0.5f;
     fHeight = 1;
     fTextHeightBehavior = TextHeightBehavior::kAll;
     fHintingIsOn = true;

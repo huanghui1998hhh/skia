@@ -142,7 +142,6 @@ enum TextHeightBehavior {
 
 enum EllipsisPosition {
     kHead,
-    kMiddle,
     kTail,
 };
 

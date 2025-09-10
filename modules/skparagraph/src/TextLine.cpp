@@ -577,14 +577,10 @@ void TextLine::shiftCluster(const Cluster* cluster, SkScalar shift, SkScalar pre
     }
 }
 
-void TextLine::createEllipsis(SkScalar maxWidth, const SkString& ellipsis, bool, EllipsisPosition ellipsisPosition, SkScalar middleEllipsisRatio) {
+void TextLine::createEllipsis(SkScalar maxWidth, const SkString& ellipsis, bool, EllipsisPosition ellipsisPosition) {
     switch (ellipsisPosition) {
         case EllipsisPosition::kHead:
             createHeadEllipsis(maxWidth, ellipsis);
-            break;
-        case EllipsisPosition::kMiddle:
-            createMiddleEllipsis(maxWidth, ellipsis, middleEllipsisRatio);
-            break;
         case EllipsisPosition::kTail:
         default:
             createTailEllipsis(maxWidth, ellipsis);
@@ -691,14 +687,6 @@ void TextLine::createHeadEllipsis(SkScalar maxWidth, const SkString& ellipsis) {
             break;
         }
     }
-}
-
-void TextLine::createMiddleEllipsis(SkScalar maxWidth, const SkString& ellipsis, SkScalar middleEllipsisRatio) {
-    // TODO: Implement true middle ellipsis support
-    // Middle ellipsis requires rendering two non-contiguous text segments with ellipsis in between
-    // This needs architectural changes to support multiple text ranges in a single line
-    // For now, fallback to tail ellipsis as a reasonable approximation
-    createTailEllipsis(maxWidth, ellipsis);
 }
 
 std::unique_ptr<Run> TextLine::shapeEllipsis(const SkString& ellipsis, const Cluster* cluster) {
@@ -1128,7 +1116,13 @@ void TextLine::iterateThroughVisualRuns(bool includingGhostSpaces, const RunVisi
     SkScalar totalWidth = 0;
     auto textRange = includingGhostSpaces ? this->textWithNewlines() : this->trimmedText();
 
-    if (this->ellipsis() != nullptr && fOwner->paragraphStyle().getTextDirection() == TextDirection::kRtl) {
+    auto ellipsisPosition = fOwner->paragraphStyle().getEllipsisPosition();
+
+    if (fOwner->paragraphStyle().getTextDirection() == TextDirection::kRtl) {
+        ellipsisPosition = ellipsisPosition == EllipsisPosition::kHead ? EllipsisPosition::kTail : EllipsisPosition::kHead;
+    }
+
+    if (this->ellipsis() != nullptr && ellipsisPosition == EllipsisPosition::kHead) {
         runOffset = this->ellipsis()->offset().fX;
         if (visitor(ellipsis(), runOffset, ellipsis()->textRange(), &width)) {
         }
@@ -1163,7 +1157,7 @@ void TextLine::iterateThroughVisualRuns(bool includingGhostSpaces, const RunVisi
     runOffset += width;
     totalWidth += width;
 
-    if (this->ellipsis() != nullptr && fOwner->paragraphStyle().getTextDirection() == TextDirection::kLtr) {
+    if (this->ellipsis() != nullptr && ellipsisPosition == EllipsisPosition::kTail) {
         if (visitor(ellipsis(), runOffset, ellipsis()->textRange(), &width)) {
             totalWidth += width;
         }
