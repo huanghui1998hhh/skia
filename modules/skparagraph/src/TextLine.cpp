@@ -1125,6 +1125,9 @@ void TextLine::iterateThroughVisualRuns(bool includingGhostSpaces, const RunVisi
     if (this->ellipsis() != nullptr && ellipsisPosition == EllipsisPosition::kHead) {
         runOffset = this->ellipsis()->offset().fX;
         if (visitor(ellipsis(), runOffset, ellipsis()->textRange(), &width)) {
+            if (fOwner->paragraphStyle().getEllipsisPosition() == EllipsisPosition::kHead) {
+                totalWidth += width;
+            }
         }
     }
 
@@ -1159,7 +1162,9 @@ void TextLine::iterateThroughVisualRuns(bool includingGhostSpaces, const RunVisi
 
     if (this->ellipsis() != nullptr && ellipsisPosition == EllipsisPosition::kTail) {
         if (visitor(ellipsis(), runOffset, ellipsis()->textRange(), &width)) {
-            totalWidth += width;
+            if (fOwner->paragraphStyle().getEllipsisPosition() == EllipsisPosition::kTail) {
+                totalWidth += width;
+            }
         }
     }
 
