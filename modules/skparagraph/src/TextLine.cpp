@@ -1117,15 +1117,16 @@ void TextLine::iterateThroughVisualRuns(bool includingGhostSpaces, const RunVisi
     auto textRange = includingGhostSpaces ? this->textWithNewlines() : this->trimmedText();
 
     auto ellipsisPosition = fOwner->paragraphStyle().getEllipsisPosition();
+    auto isLtr = fOwner->paragraphStyle().getTextDirection() == TextDirection::kLtr;
 
-    if (fOwner->paragraphStyle().getTextDirection() == TextDirection::kRtl) {
+    if (!isLtr) {
         ellipsisPosition = ellipsisPosition == EllipsisPosition::kHead ? EllipsisPosition::kTail : EllipsisPosition::kHead;
     }
 
     if (this->ellipsis() != nullptr && ellipsisPosition == EllipsisPosition::kHead) {
         runOffset = this->ellipsis()->offset().fX;
         if (visitor(ellipsis(), runOffset, ellipsis()->textRange(), &width)) {
-            if (fOwner->paragraphStyle().getEllipsisPosition() == EllipsisPosition::kHead) {
+            if (isLtr) {
                 totalWidth += width;
             }
         }
@@ -1162,7 +1163,7 @@ void TextLine::iterateThroughVisualRuns(bool includingGhostSpaces, const RunVisi
 
     if (this->ellipsis() != nullptr && ellipsisPosition == EllipsisPosition::kTail) {
         if (visitor(ellipsis(), runOffset, ellipsis()->textRange(), &width)) {
-            if (fOwner->paragraphStyle().getEllipsisPosition() == EllipsisPosition::kTail) {
+            if (!isLtr) {
                 totalWidth += width;
             }
         }
