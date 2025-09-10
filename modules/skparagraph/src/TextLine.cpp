@@ -577,7 +577,32 @@ void TextLine::shiftCluster(const Cluster* cluster, SkScalar shift, SkScalar pre
     }
 }
 
-void TextLine::createEllipsis(SkScalar maxWidth, const SkString& ellipsis, bool) {
+void TextLine::createEllipsis(SkScalar maxWidth, const SkString& ellipsis, bool, EllipsisPosition ellipsisPosition, SkScalar middleEllipsisRatio) {
+    switch (ellipsisPosition) {
+        case EllipsisPosition::kHead:
+            createHeadEllipsis(maxWidth, ellipsis);
+            break;
+        case EllipsisPosition::kMiddle:
+            createMiddleEllipsis(maxWidth, ellipsis, middleEllipsisRatio);
+            break;
+        case EllipsisPosition::kTail:
+        default:
+            createTailEllipsis(maxWidth, ellipsis);
+            break;
+    }
+
+    if (!fEllipsis) {
+        // Weird situation: ellipsis does not fit; no ellipsis then
+        fClusterRange.end = fClusterRange.start;
+        fGhostClusterRange.end = fClusterRange.start;
+        fText.end = fText.start;
+        fTextIncludingNewlines.end = fTextIncludingNewlines.start;
+        fTextExcludingSpaces.end = fTextExcludingSpaces.start;
+        fAdvance.fX = 0;
+    }
+}
+
+void TextLine::createTailEllipsis(SkScalar maxWidth, const SkString& ellipsis) {
     // Replace some clusters with the ellipsis
     // Go through the clusters in the reverse logical order
     // taking off cluster by cluster until the ellipsis fits
@@ -619,16 +644,61 @@ void TextLine::createEllipsis(SkScalar maxWidth, const SkString& ellipsis, bool)
         fTextExcludingSpaces.end = cluster.textRange().end;
         break;
     }
+}
 
-    if (!fEllipsis) {
-        // Weird situation: ellipsis does not fit; no ellipsis then
-        fClusterRange.end = fClusterRange.start;
-        fGhostClusterRange.end = fClusterRange.start;
-        fText.end = fText.start;
-        fTextIncludingNewlines.end = fTextIncludingNewlines.start;
-        fTextExcludingSpaces.end = fTextExcludingSpaces.start;
-        fAdvance.fX = 0;
+void TextLine::createHeadEllipsis(SkScalar maxWidth, const SkString& ellipsis) {
+    // Replace some clusters with the ellipsis from the beginning
+    // Go through the clusters in the forward logical order
+    // taking off cluster by cluster until the ellipsis fits
+    SkScalar width = fAdvance.fX;
+    SkScalar removedWidth = 0;
+    RunIndex lastRun = EMPTY_RUN;
+    std::unique_ptr<Run> ellipsisRun;
+    
+    for (auto clusterIndex = fGhostClusterRange.start; clusterIndex < fGhostClusterRange.end; ++clusterIndex) {
+        auto& cluster = fOwner->cluster(clusterIndex);
+        // Shape the ellipsis if the run has changed
+        if (lastRun != cluster.runIndex()) {
+            ellipsisRun = this->shapeEllipsis(ellipsis, &cluster);
+            if (ellipsisRun->advance().fX > maxWidth) {
+                // Ellipsis is bigger than the entire line; no way we can add it at all
+                // BUT! We can keep scanning in case the next run will give us better results
+                lastRun = EMPTY_RUN;
+                continue;
+            } else {
+                // We may need to continue
+                lastRun = cluster.runIndex();
+            }
+        }
+        
+        removedWidth += cluster.width();
+        SkScalar remainingWidth = width - removedWidth;
+        
+        // See if it fits
+        if (remainingWidth + ellipsisRun->advance().fX <= maxWidth) {
+            // We found enough room for the ellipsis
+            fAdvance.fX = remainingWidth;
+            fEllipsis = std::move(ellipsisRun);
+            fEllipsis->setOwner(fOwner);
+
+            // Let's update the line - keep text from this cluster onwards
+            fClusterRange.start = clusterIndex + 1;
+            fGhostClusterRange.start = fClusterRange.start;
+            fEllipsis->fClusterStart = cluster.textRange().start;
+            fText.start = cluster.textRange().end;
+            fTextIncludingNewlines.start = cluster.textRange().end;
+            fTextExcludingSpaces.start = cluster.textRange().end;
+            break;
+        }
     }
+}
+
+void TextLine::createMiddleEllipsis(SkScalar maxWidth, const SkString& ellipsis, SkScalar middleEllipsisRatio) {
+    // TODO: Implement true middle ellipsis support
+    // Middle ellipsis requires rendering two non-contiguous text segments with ellipsis in between
+    // This needs architectural changes to support multiple text ranges in a single line
+    // For now, fallback to tail ellipsis as a reasonable approximation
+    createTailEllipsis(maxWidth, ellipsis);
 }
 
 std::unique_ptr<Run> TextLine::shapeEllipsis(const SkString& ellipsis, const Cluster* cluster) {

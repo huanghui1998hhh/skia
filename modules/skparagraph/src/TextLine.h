@@ -107,8 +107,18 @@ public:
     void visit(SkScalar x, SkScalar y);
     void ensureTextBlobCachePopulated();
 
-    void createEllipsis(SkScalar maxWidth, const SkString& ellipsis, bool ltr);
+    void createEllipsis(SkScalar maxWidth,
+                        const SkString& ellipsis,
+                        bool ltr,
+                        EllipsisPosition ellipsisPosition,
+                        SkScalar middleEllipsisRatio);
 
+private:
+    void createHeadEllipsis(SkScalar maxWidth, const SkString& ellipsis);
+    void createMiddleEllipsis(SkScalar maxWidth, const SkString& ellipsis, SkScalar middleEllipsisRatio);
+    void createTailEllipsis(SkScalar maxWidth, const SkString& ellipsis);
+
+public:
     // For testing internal structures
     void scanStyles(StyleType style, const RunStyleVisitor& visitor);
 

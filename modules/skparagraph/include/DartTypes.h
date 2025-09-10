@@ -140,6 +140,12 @@ enum TextHeightBehavior {
     kDisableAll = 0x1 | 0x2,
 };
 
+enum EllipsisPosition {
+    kHead,
+    kMiddle,
+    kTail,
+};
+
 enum class LineMetricStyle : uint8_t {
     // Use ascent, descent, etc from a fixed baseline.
     Typographic,
