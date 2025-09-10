@@ -178,6 +178,64 @@ void TextWrapper::lookAhead(SkScalar maxWidth, Cluster* endOfClusters, bool appl
     }
 }
 
+void TextWrapper::lookBack(SkScalar maxWidth, Cluster* endOfClusters, bool applyRoundingHack) {
+
+    reset();
+    fEndLine.metrics().clean();
+    fWords.startFrom(fEndLine.startCluster(), fEndLine.startPos());
+    fClusters.startFrom(fEndLine.startCluster(), fEndLine.startPos());
+    fClip.startFrom(fEndLine.startCluster(), fEndLine.startPos());
+
+    LineBreakerWithLittleRounding breaker(maxWidth, applyRoundingHack);
+
+    // Scan backwards starting from endOfClusters down to the current line start bound
+    auto startBound = fEndLine.startCluster();
+    if (startBound == nullptr) {
+        return;
+    }
+
+    Cluster* selectedStart = startBound;
+    SkScalar accumulated = 0;
+
+    for (auto cluster = endOfClusters; cluster >= startBound; --cluster) {
+        if (cluster->isHardBreak()) {
+            // Line starts after the hard break
+            selectedStart = cluster + 1;
+            break;
+        }
+
+        SkScalar next = accumulated + cluster->width();
+        if (breaker.breakLine(next)) {
+            // If nothing fits yet, still include this cluster to ensure progress
+            if (accumulated == 0) {
+                selectedStart = cluster;
+            } else {
+                selectedStart = cluster + 1;
+            }
+            break;
+        }
+
+        accumulated = next;
+        selectedStart = cluster;
+
+        if (cluster == startBound) {
+            break;
+        }
+    }
+
+    if (selectedStart < startBound) {
+        selectedStart = startBound;
+    }
+
+    if (selectedStart > endOfClusters) {
+        // Nothing selected; leave stretches empty
+        return;
+    }
+
+    // Build the stretch from the chosen start to the end (tail of the paragraph/remaining text)
+    fClusters = TextStretch(selectedStart, endOfClusters, fClusters.metrics().getForceStrut());
+}
+
 void TextWrapper::moveForward(bool hasEllipsis) {
 
     // We normally break lines by words.
@@ -302,14 +360,21 @@ void TextWrapper::breakTextIntoLines(ParagraphImpl* parent,
     InternalLineMetrics maxRunMetrics;
     bool needEllipsis = false;
     while (fEndLine.endCluster() != end) {
-
-        this->lookAhead(maxWidth, end, parent->getApplyRoundingHack());
-
+        // Decide whether to scan backwards for head ellipsis on the last line
+        auto ellipsisPosition = parent->paragraphStyle().getEllipsisPosition();
         auto lastLine = (hasEllipsis && unlimitedLines) || fLineNumber >= maxLines;
-        needEllipsis = hasEllipsis && !endlessLine && lastLine;
+        auto needHeadEllipsisNow = hasEllipsis && (ellipsisPosition == EllipsisPosition::kHead) &&
+                                   !endlessLine && lastLine;
 
-        this->moveForward(needEllipsis);
-        needEllipsis &= fEndLine.endCluster() < end - 1; // Only if we have some text to ellipsize
+        if (needHeadEllipsisNow) {
+            this->lookBack(maxWidth, end, parent->getApplyRoundingHack());
+        } else {
+            this->lookAhead(maxWidth, end, parent->getApplyRoundingHack());
+        }
+
+        auto needEllipsisBase = hasEllipsis && !endlessLine && lastLine;
+        this->moveForward(needEllipsisBase);
+        needEllipsis = needEllipsisBase && (fEndLine.endCluster() < end - 1); // only if text to ellipsize
 
         // Do not trim end spaces on the naturally last line of the left aligned text
         this->trimEndSpaces(align);
